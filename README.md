@@ -1,16 +1,46 @@
-# React + Vite
+# Land Acquisition Delay Prediction System
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+**SIH26017 | Ministry of Rural Development**
 
-Currently, two official plugins are available:
+React (Vite) dashboard for land acquisition officers, backed by a FastAPI service that serves the
+trained Random Forest delay models.
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```
+frontend (React + Vite, :5173)  ──/api──▶  backend (FastAPI, :8000)  ──▶  ml-model/delay_model.pkl
+```
 
-## React Compiler
+## Run the API
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload --port 8000
+```
 
-## Expanding the Oxlint configuration
+See [backend/README.md](backend/README.md) for the endpoint list and payloads.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Run the dashboard
+
+```bash
+npm install
+npm run dev
+```
+
+The Vite dev server proxies `/api` to `http://127.0.0.1:8000` (override with `VITE_API_PROXY_TARGET`).
+For a deployed API, set `VITE_API_BASE_URL` to its origin — see `.env.example`.
+
+## How the pages use the API
+
+| Page | Endpoint |
+|---|---|
+| Dashboard | `GET /api/stats`, `GET /api/activity` |
+| Active Projects, Alerts | `GET /api/projects` |
+| Project Details | `GET /api/projects/{id}` |
+| Add New Project | `GET /api/options`, `POST /api/projects` (model scores the project) |
+| Project History | `GET /api/activity` |
+| Reports | `GET /api/reports/district-stats`, `GET /api/model/feature-importance` |
+
+## ML model
+
+`ml-model/` holds the training notebook, the synthetic dataset and `delay_model.pkl`
+(classifier, regressor, label encoders, feature importance). See [ml-model/README.md](ml-model/README.md).

@@ -1,6 +1,31 @@
+import { useEffect, useState } from "react";
 import RiskReport from "../components/RiskReport.jsx";
+import { getProject } from "../api/index.js";
+import { apiErrorMessage } from "../api/client.js";
 
-export default function ProjectDetails({ projects, id, onBack }) {
-  const data = projects.find((p) => p.id === id) || projects[0];
-  return <RiskReport data={data} onBack={onBack} backLabel="Back to Active Projects" />;
+export default function ProjectDetails({ id, onBack }) {
+  const [project, setProject] = useState(null);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    getProject(id)
+      .then((data) => !cancelled && setProject(data))
+      .catch((e) => !cancelled && setError(apiErrorMessage(e)));
+    return () => {
+      cancelled = true;
+    };
+  }, [id]);
+
+  if (error) {
+    return (
+      <>
+        <button className="linkback" onClick={onBack}>&larr; Back to Active Projects</button>
+        <p className="api-banner">{error}</p>
+      </>
+    );
+  }
+  if (!project) return <p className="muted">Loading project…</p>;
+
+  return <RiskReport data={project} onBack={onBack} backLabel="Back to Active Projects" />;
 }
