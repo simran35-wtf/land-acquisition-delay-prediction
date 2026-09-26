@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import "./App.css";
 
-import { initialProjects, initialActivity } from "./data/mockData.js";
+import { getActivity, getProjects, getStats } from "./api/index.js";
+import { apiErrorMessage } from "./api/client.js";
 import Icon from "./components/Icon.jsx";
 import RiskReport from "./components/RiskReport.jsx";
 
@@ -22,9 +23,34 @@ export default function App() {
   const [page, setPage] = useState("Dashboard");
   const [selectedId, setSelectedId] = useState(null);
   const [draft, setDraft] = useState(null);
-  const [projects, setProjects] = useState(initialProjects);
-  const [activity, setActivity] = useState(initialActivity);
-  const [counts, setCounts] = useState({ total: 24, high: 8, medium: 10, low: 6 });
+  const [projects, setProjects] = useState([]);
+  const [activity, setActivity] = useState([]);
+  const [counts, setCounts] = useState({ total: 0, high: 0, medium: 0, low: 0 });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [projectList, activityLog, stats] = await Promise.all([
+        getProjects(),
+        getActivity(),
+        getStats(),
+      ]);
+      setProjects(projectList);
+      setActivity(activityLog);
+      setCounts(stats);
+    } catch (e) {
+      setError(apiErrorMessage(e));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (officer) load();
+  }, [officer, load]);
 
   function openProject(id) {
     setSelectedId(id);
@@ -32,31 +58,10 @@ export default function App() {
   }
 
   function afterSubmit(result) {
-    // add the new project to Active Projects
-    setProjects((prev) => [result, ...prev]);
-
-    // log it in Project History / Recent Activity
-    setActivity((prev) => [
-      {
-        time: "Just now",
-        project: result.name,
-        place: result.district,
-        text: "New project added",
-        status: "In Progress",
-      },
-      ...prev,
-    ]);
-
-    // keep the dashboard counters in sync
-    setCounts((prev) => ({
-      total: prev.total + 1,
-      high: prev.high + (result.risk === "High" ? 1 : 0),
-      medium: prev.medium + (result.risk === "Medium" ? 1 : 0),
-      low: prev.low + (result.risk === "Low" ? 1 : 0),
-    }));
-
+    // the backend already stored the project and logged the activity
     setDraft(result);
     setPage("__result");
+    load();
   }
 
   function go(p) {
@@ -80,9 +85,9 @@ export default function App() {
           </div>
         </div>
         <div className="user">
-          <span className="bell" aria-label="3 alerts">
+          <span className="bell" aria-label={`${counts.high} high risk alerts`}>
             <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M6 16V11a6 6 0 1 1 12 0v5l1.5 2h-15zM10 21h4" /></svg>
-            <i>3</i>
+            <i>{counts.high}</i>
           </span>
           <div className="who">
             <b>{officer.name}</b>
@@ -104,6 +109,14 @@ export default function App() {
         </nav>
 
         <main className="content">
+          {error && (
+            <div className="api-banner">
+              <span>{error}</span>
+              <button className="btn ghost small" onClick={load}>Retry</button>
+            </div>
+          )}
+          {loading && <p className="muted">Loading data from the prediction API…</p>}
+
           {page === "Dashboard" && <Dashboard go={go} counts={counts} activity={activity} />}
           {page === "Active Projects" && <ActiveProjects projects={projects} openProject={openProject} />}
           {page === "Add New Project" && <AddProject onSubmitted={afterSubmit} />}
@@ -111,7 +124,7 @@ export default function App() {
           {page === "Alerts" && <Alerts projects={projects} openProject={openProject} />}
           {page === "Reports" && <Reports />}
           {page === "Help & Support" && <HelpSupport />}
-          {page === "__detail" && <ProjectDetails projects={projects} id={selectedId} onBack={() => go("Active Projects")} />}
+          {page === "__detail" && <ProjectDetails key={selectedId} id={selectedId} onBack={() => go("Active Projects")} />}
           {page === "__result" && draft && <RiskReport data={draft} onBack={() => go("Add New Project")} backLabel="Back to Add Project" />}
         </main>
       </div>

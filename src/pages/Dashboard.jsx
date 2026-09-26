@@ -1,7 +1,7 @@
 import { tone } from "../data/mockData.js";
 
 export default function Dashboard({ go, counts, activity }) {
-  const pct = (n) => `${(n / counts.total) * 100}%`;
+  const pct = (n) => (counts.total ? `${(n / counts.total) * 100}%` : "0%");
   return (
     <>
       <section className="hero">
