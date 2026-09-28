@@ -1,0 +1,13 @@
+# Railway.app Configuration
+# For deploying both frontend and backend automatically
+
+[build]
+  builder = "dockerfile"
+
+[deploy]
+  numReplicas = 1
+  startCommand = "serve -s dist -l 5173"
+
+[env]
+  VITE_API_BASE_URL = "${{ secrets.BACKEND_URL }}"
+  NODE_ENV = "production"
